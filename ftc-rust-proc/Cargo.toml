@@ -1,23 +1,20 @@
 [package]
-name = "ftc"
-version = "11.0.0"
+name = "ftc-rust-proc"
+version = "0.1.0"
 edition = "2024"
 
-[package.metadata.ftc]
-controller_version = "11.0"
+[lib]
+proc-macro = true
 
 [dependencies]
-ftc-rust-proc = { path = "./ftc-rust-proc", optional = true }
-
-[features]
-default = ["proc-macro"]
-proc-macro = ["dep:ftc-rust-proc"]
+proc-macro2 = "1.0.103"
+quote = "1.0.41"
+syn = { version = "2.0.108", features = ["full"] }
 
 [lints.rust]
 missing_docs = "deny"
 
 [lints.clippy]
-missing_docs_in_private_items = "warn"
 pedantic = { level = "warn", priority = -1 }
 all = { level = "warn", priority = -1 }
 ignore_without_reason = "warn"

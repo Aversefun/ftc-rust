@@ -1,11 +1,14 @@
-//! Rust Project
+//! Code for using Rust in FTC robot code.
 
-use core::ops::Add;
+#[cfg(feature = "proc-macro")]
+pub use ftc_rust_proc::ftc;
 
-/// Add two values together.
-///
-/// # Errors
-/// This is an example that does not error.
-pub fn add<T: Add>(a: T, b: T) -> Result<T::Output, Box<dyn std::error::Error>> {
-    Ok(a + b)
+/// A direction for motors.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Direction {
+    /// Turn forward. Commonly clockwise.
+    #[default]
+    Forward,
+    /// Turn backward. Commonly counterclockwise.
+    Reverse
 }
