@@ -3,45 +3,88 @@
 /// Call a java method.
 #[macro_export]
 macro_rules! call_method {
-    (vm $vm:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {
-        $vm.attach_current_thread(|env| $crate::call_method!(env env, $obj, $name, $sig, $args))
-    };
-    ($self:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {
-        {let this = $self; $crate::call_method!(vm this.vm, $obj, $name, $sig, $args)}
-    };
-    (env $env:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {{
-        $env
-            .write()
-            .unwrap()
-            .call_method(
-                &($obj),
-                $crate::jni::strings::JNIString::new($name),
-                $crate::jni::strings::JNIString::new($sig),
-                &$args.into_iter().map(|v| v.into()).collect::<Vec<$crate::jni::JValue>>(),
-            )
-            .unwrap()
+    (void $self:expr, $obj:expr, $name:expr, $sig:expr, $args:tt $(,)?) => {{
+        $self.vm.attach_current_thread(|env| {$crate::call_method!(env env, $obj, $name, $sig, $args).unwrap(); Ok::<(), jni::errors::Error>(())}).unwrap();
     }};
-
+    (obj $self:expr, $obj:expr, $name:expr, $sig:expr, $args:tt $(,)?) => {{
+        $self.vm.attach_current_thread(|env| {
+            let object = $crate::call_method!(env env, $obj, $name, $sig, $args).unwrap().l().unwrap();
+            $crate::new_global!(env, object)
+        }).unwrap()
+    }};
+    (double $self:expr, $obj:expr, $name:expr, $sig:expr, $args:tt $(,)?) => {{
+        $self.vm.attach_current_thread(|env| {
+            $crate::call_method!(env env, $obj, $name, $sig, $args).unwrap().d()
+        }).unwrap()
+    }};
+    (int $self:expr, $obj:expr, $name:expr, $sig:expr, $args:tt $(,)?) => {{
+        $self.vm.attach_current_thread(|env| {
+            $crate::call_method!(env env, $obj, $name, $sig, $args).unwrap().i()
+        }).unwrap()
+    }};
+    (bool $self:expr, $obj:expr, $name:expr, $sig:expr, $args:tt $(,)?) => {{
+        $self.vm.attach_current_thread(|env| {
+            $crate::call_method!(env env, $obj, $name, $sig, $args).unwrap().z()
+        }).unwrap()
+    }};
     (env $env:expr, $obj:expr, $name:expr, $sig:expr, [] $(,)?) => {{
-        $env
-            .write()
-            .unwrap()
+        let env: &mut $crate::jni::Env = $env;
+        let obj = env.new_local_ref(&$obj).unwrap();
+        env
             .call_method(
-                &($obj),
+                &obj,
                 $crate::jni::strings::JNIString::new($name),
                 $crate::jni::strings::JNIString::new($sig),
                 &[],
             )
+    }};
+    (env $env:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {{
+        let env: &mut $crate::jni::Env = $env;
+        let obj = env.new_local_ref(&$obj).unwrap();
+        env
+            .call_method(
+                &obj,
+                $crate::jni::strings::JNIString::new($name),
+                $crate::jni::strings::JNIString::new($sig),
+                &$args.into_iter().map(|v| v.into()).collect::<Vec<$crate::jni::JValue>>(),
+            )
+    }};
+}
+
+/// Create a new string.
+#[macro_export]
+macro_rules! new_string {
+    (env $env:expr, $val:expr) => {
+        $env.new_string(JNIString::new($val))
+    };
+    (vm $vm:expr, $val:expr) => {
+        $vm.attach_current_thread(|env| $crate::new_string!(env env, $val))
             .unwrap()
-    }};
-    ($self:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {{
+    };
+    ($self:expr, $val:expr) => {{
         let this = $self;
 
-        $crate::call_method!(env this.env, $obj, $name, $sig, $args)
+        $crate::new_string!(vm this.vm, $val)
     }};
-    ($self:expr, $obj:expr, $name:expr, $sig:expr, [] $(,)?) => {{
-        let this = $self;
+}
 
-        $crate::call_method!(env this.env, $obj, $name, $sig)
-    }};
+/// Create a new global around an object.
+#[macro_export]
+macro_rules! new_global {
+    ($env:expr, $obj:expr) => {
+        {
+            let obj = $obj;
+            $env.new_global_ref(obj)
+        }
+    };
+    (vm $vm:expr, $obj:expr) => {
+        $vm.attach_current_thread(|env| $crate::new_global!(env env, $obj)).unwrap()
+    };
+    (obj $self:expr, $obj:expr) => {
+        {
+            let this = $self;
+
+            $crate::new_global!(vm this.vm, $obj)
+        }
+    };
 }

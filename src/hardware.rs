@@ -1,18 +1,16 @@
 //! Hardware-related code.
 
-use std::{rc::Rc, sync::RwLock};
-
-use jni::{objects::{JClass, JObject}, strings::JNIString};
+use jni::{Env, JavaVM, objects::{JClass, JObject}, refs::Global, strings::JNIString};
 
 mod devices;
 pub use devices::*;
 
-use crate::call_method;
+use crate::{call_method, new_global, new_string};
 
 /// A device that can be made from a java object.
-pub trait Device<'a, 'local> {
+pub trait Device {
     /// Create a new instance of this type from the java environment and the relevant object.
-    fn from_java(env: Rc<RwLock<&'a mut jni::Env<'local>>>, object: JObject<'local>) -> Self;
+    fn from_java(vm: JavaVM, object: Global<JObject<'static>>) -> Self;
     /// The Java-formatted class name. Unlike other JNI things, this uses dots.
     const JAVA_CLASS: &'static str;
     /// The JNI-formatted class name. Uses forward slashes instead of dots.
@@ -21,56 +19,44 @@ pub trait Device<'a, 'local> {
 
 /// A wrapper for accessing hardware-related methods.
 #[derive(Debug)]
-pub struct Hardware<'a, 'local> {
+#[doc(alias = "HardwareMap")]
+pub struct Hardware {
     /// The environment.
-    pub(crate) env: Rc<RwLock<&'a mut jni::Env<'local>>>,
+    pub(crate) vm: JavaVM,
     /// The actual hardwareMap object. Should be com/qualcomm/robotcore/hardware/HardwareMap.
-    pub(crate) hardware_map: JObject<'local>,
+    pub(crate) hardware_map: Global<JObject<'static>>,
 }
 
-impl<'a, 'local> Hardware<'a, 'local> {
+impl Hardware {
     /// Get a [`Device`] from the hardware map.
-    pub fn get<T: Device<'a, 'local>>(&self, name: impl AsRef<str>) -> T {
-        let class = self
-            .env
-            .write()
-            .unwrap()
-            .load_class(JNIString::new(T::JAVA_CLASS))
-            .unwrap();
-
-        let name = self
-            .env
-            .write()
-            .unwrap()
-            .new_string(JNIString::new(name))
-            .unwrap();
-
+    pub fn get<T: Device>(&self, name: impl AsRef<str>) -> T {
         let object = self
-            .env
-            .write()
-            .unwrap()
-            .call_method(
-                &self.hardware_map,
-                JNIString::new("get"),
-                JNIString::new(format!(
-                    "(Ljava/lang/Class;Ljava/lang/String;)L{};",
-                    T::JNI_CLASS
-                )),
-                &[(&class).into(), (&name).into()],
-            )
-            .unwrap()
-            .l()
+            .vm
+            .attach_current_thread(|env| {
+                let class = env.load_class(JNIString::new(T::JAVA_CLASS)).unwrap();
+                let name = new_string!(env env, name).unwrap();
+
+                new_global!(env, env.call_method(
+                    &self.hardware_map,
+                    JNIString::new("get"),
+                    JNIString::new(format!(
+                        "(Ljava/lang/Class;Ljava/lang/String;)L{};",
+                        T::JNI_CLASS
+                    )),
+                    &[(&class).into(), (&name).into()],
+                )
+                .unwrap()
+                .l().unwrap())
+            })
             .unwrap();
 
-        T::from_java(self.env.clone(), object)
+        T::from_java(self.vm.clone(), object)
     }
 }
 
 /// Get a `JClass` of the provided type.
-fn get_class<'local, T: IntoJniObject>(env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JClass<'local> {
+fn get_class<'local, T: IntoJniObject>(env: &mut Env<'local>) -> JClass<'local> {
     env
-        .write()
-        .unwrap()
         .load_class(JNIString::new(
             T::JNI_CLASS,
         ))
@@ -89,11 +75,9 @@ macro_rules! enum_variant_into {
         impl IntoJniObject for $ty {
             const JNI_CLASS: &'static str = $jni_class;
             const JAVA_CLASS: &'static str = $java_class;
-            fn into_jni_object<'local>(self, env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JObject<'local> {
+            fn into_jni_object<'local>(self, env: &mut Env<'local>) -> JObject<'local> {
                 let class = get_class::<Self>(env);
-
-                env.write()
-                    .unwrap()
+                env
                     .get_static_field(
                         class,
                         JNIString::new(match self {
@@ -106,11 +90,11 @@ macro_rules! enum_variant_into {
                     .unwrap()
             }
 
-            fn from_jni_object<'local>(
-                env: &Rc<RwLock<&mut jni::Env<'local>>>,
-                obj: &JObject<'local>,
+            fn from_jni_object(
+                vm: JavaVM,
+                obj: &JObject,
             ) -> Self {
-                let res = call_method!(env env, obj, "ordinal", "()I", []).i().unwrap();
+                let res = vm.attach_current_thread(|env| call_method!(env env, obj, "ordinal", "()I", []).unwrap().i()).unwrap();
                 let mut items = vec![$(Self:: $variant),*];
                 let full_len = items.len();
                 match res {
@@ -130,9 +114,9 @@ pub trait IntoJniObject {
     const JAVA_CLASS: &'static str;
 
     /// Convert this type into a `JObject`.
-    fn into_jni_object<'local>(self, env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JObject<'local>;
+    fn into_jni_object<'local>(self, env: &mut Env<'local>) -> JObject<'local>;
     /// Convert a `JObject` into this type.
-    fn from_jni_object<'local>(env: &Rc<RwLock<&mut jni::Env<'local>>>, obj: &JObject<'local>) -> Self;
+    fn from_jni_object(vm: JavaVM, obj: &JObject) -> Self;
 }
 
 /// `DcMotor`s can be configured to internally reverse the values to which, e.g., their motor power is set. This makes
