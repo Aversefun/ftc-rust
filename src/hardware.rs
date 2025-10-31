@@ -2,7 +2,7 @@
 
 use std::{rc::Rc, sync::RwLock};
 
-use jni::{objects::JObject, strings::JNIString};
+use jni::{objects::{JClass, JObject}, strings::JNIString};
 
 mod devices;
 pub use devices::*;
@@ -66,6 +66,75 @@ impl<'a, 'local> Hardware<'a, 'local> {
     }
 }
 
+/// Get a `JClass` of the provided type.
+fn get_class<'local, T: IntoJniObject>(env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JClass<'local> {
+    env
+        .write()
+        .unwrap()
+        .load_class(JNIString::new(
+            T::JNI_CLASS,
+        ))
+        .unwrap()
+}
+
+/// Generate an implementation of `IntoJniObject` for an enum.
+macro_rules! enum_variant_into {
+    {
+        $ty:ty,
+        $jni_class:literal,
+        $java_class:literal,
+        $($variant:ident),*
+        $(,)?
+    } => {
+        impl IntoJniObject for $ty {
+            const JNI_CLASS: &'static str = $jni_class;
+            const JAVA_CLASS: &'static str = $java_class;
+            fn into_jni_object<'local>(self, env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JObject<'local> {
+                let class = get_class::<Self>(env);
+
+                env.write()
+                    .unwrap()
+                    .get_static_field(
+                        class,
+                        JNIString::new(match self {
+                            $(Self:: $variant => stringify!($variant).to_uppercase()),*
+                        }),
+                        JNIString::new(Self::JNI_CLASS),
+                    )
+                    .unwrap()
+                    .l()
+                    .unwrap()
+            }
+
+            fn from_jni_object<'local>(
+                env: &Rc<RwLock<&mut jni::Env<'local>>>,
+                obj: &JObject<'local>,
+            ) -> Self {
+                let res = call_method!(env env, obj, "ordinal", "()I").i().unwrap();
+                let mut items = vec![$(Self:: $variant),*];
+                let full_len = items.len();
+                match res {
+                    $(x if x == {items.pop(); (full_len - items.len()) as i32} => Self:: $variant),*,
+                    _ => unreachable!()
+                }
+            }
+        }
+    };
+}
+
+/// Convert this type into a JNI object.
+pub trait IntoJniObject {
+    /// The JNI-formatted class name.
+    const JNI_CLASS: &'static str;
+    /// The Java-formatted class name.
+    const JAVA_CLASS: &'static str;
+
+    /// Convert this type into a `JObject`.
+    fn into_jni_object<'local>(self, env: &Rc<RwLock<&mut jni::Env<'local>>>) -> JObject<'local>;
+    /// Convert a `JObject` into this type.
+    fn from_jni_object<'local>(env: &Rc<RwLock<&mut jni::Env<'local>>>, obj: &JObject<'local>) -> Self;
+}
+
 /// `DcMotor`s can be configured to internally reverse the values to which, e.g., their motor power is set. This makes
 /// it easy to have drive train motors on two sides of a robot: during initialization, one would be set at at forward,
 /// the other at reverse, and the difference between the two in that respect could be there after ignored.
@@ -81,52 +150,12 @@ pub enum Direction {
     Reverse,
 }
 
-impl Direction {
-    /// The JNI-formatted class name.
-    pub const JNI_CLASS: &str = "com/qualcomm/robotcore/hardware/DcMotorSimple$Direction";
-    /// The Java-formatted class name.
-    pub const JAVA_CLASS: &str = "com.qualcomm.robotcore.hardware.DcMotorSimple.Direction";
-
-    /// Convert this direction into a `JObject`.
-    pub fn into_jni_object<'local>(
-        self,
-        env: &Rc<RwLock<&mut jni::Env<'local>>>,
-    ) -> JObject<'local> {
-        let class = env
-            .write()
-            .unwrap()
-            .load_class(JNIString::new(
-                Self::JNI_CLASS,
-            ))
-            .unwrap();
-
-        env.write()
-            .unwrap()
-            .get_static_field(
-                class,
-                JNIString::new(match self {
-                    Self::Forward => "FORWARD",
-                    Self::Reverse => "REVERSE",
-                }),
-                JNIString::new(Self::JNI_CLASS),
-            )
-            .unwrap()
-            .l()
-            .unwrap()
-    }
-
-    /// Convert this direction into a `JObject`.
-    pub fn from_jni_object<'local>(
-        env: &Rc<RwLock<&mut jni::Env<'local>>>,
-        obj: &JObject<'local>,
-    ) -> Self {
-        let res = call_method!(env env, obj, "ordinal", "()I").i().unwrap();
-        match res {
-            0 => Direction::Forward,
-            1 => Direction::Reverse,
-            _ => unreachable!(),
-        }
-    }
+enum_variant_into! {
+    Direction,
+    "com/qualcomm/robotcore/hardware/DcMotorSimple$Direction",
+    "com.qualcomm.robotcore.hardware.DcMotorSimple.Direction",
+    Forward,
+    Reverse,
 }
 
 /// `ZeroPowerBehavior` provides an indication as to a motor's behavior when a power level of zero is applied.
@@ -144,60 +173,20 @@ pub enum ZeroPowerBehavior {
     Float,
 }
 
-impl ZeroPowerBehavior {
-    /// The JNI-formatted class name.
-    pub const JNI_CLASS: &str = "com/qualcomm/robotcore/hardware/DcMotor$Direction";
-    /// The Java-formatted class name.
-    pub const JAVA_CLASS: &str = "com.qualcomm.robotcore.hardware.DcMotor.Direction";
-
-    /// Convert this direction into a `JObject`.
-    pub fn into_jni_object<'local>(
-        self,
-        env: &Rc<RwLock<&mut jni::Env<'local>>>,
-    ) -> JObject<'local> {
-        let class = env
-            .write()
-            .unwrap()
-            .load_class(JNIString::new(
-                Self::JNI_CLASS,
-            ))
-            .unwrap();
-
-        env.write()
-            .unwrap()
-            .get_static_field(
-                class,
-                JNIString::new(match self {
-                    Self::Unknown => "UNKNOWN",
-                    Self::Brake => "BRAKE",
-                    Self::Float => "FLOAT",
-                }),
-                JNIString::new(Self::JNI_CLASS),
-            )
-            .unwrap()
-            .l()
-            .unwrap()
-    }
-
-    /// Convert this direction into a `JObject`.
-    pub fn from_jni_object<'local>(
-        env: &Rc<RwLock<&mut jni::Env<'local>>>,
-        obj: &JObject<'local>,
-    ) -> Self {
-        let res = call_method!(env env, obj, "ordinal", "()I").i().unwrap();
-        match res {
-            0 => Self::Unknown,
-            1 => Self::Brake,
-            2 => Self::Float,
-            _ => unreachable!(),
-        }
-    }
+enum_variant_into! {
+    ZeroPowerBehavior,
+    "com/qualcomm/robotcore/hardware/DcMotor$ZeroPowerBehavior",
+    "com.qualcomm.robotcore.hardware.DcMotor.ZeroPowerBehavior",
+    Unknown,
+    Brake,
+    Float,
 }
 
 /// The run mode of a motor controls how the motor interprets its parameter settings passed through power- and
 /// encoder-related methods. Some of these modes internally use `PIDcontrol` to achieve their function, while others
 /// do not. Those that do are referred to as "PID modes".
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[must_use]
 pub enum RunMode {
     /// The motor is simply to run at whatever velocity is achieved by apply a particular power level to the
     /// motor.
@@ -219,3 +208,14 @@ pub enum RunMode {
     /// is complete.
     StopAndResetEncoder,
 }
+
+enum_variant_into! {
+    RunMode,
+    "com/qualcomm/robotcore/hardware/DcMotor$RunMode",
+    "com.qualcomm.robotcore.hardware.DcMotor.RunMode",
+    RunWithoutEncoder,
+    RunUsingEncoder,
+    RunToPosition,
+    StopAndResetEncoder,
+}
+

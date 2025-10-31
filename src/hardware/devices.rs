@@ -4,7 +4,7 @@ use std::{rc::Rc, sync::RwLock};
 
 use jni::objects::JObject;
 
-use crate::{call_method, hardware::{Direction, ZeroPowerBehavior}};
+use crate::{call_method, hardware::{Direction, IntoJniObject as _, RunMode, ZeroPowerBehavior}};
 
 /// Easily define a basic device.
 macro_rules! device {
@@ -89,7 +89,7 @@ impl DcMotor<'_, '_> {
             self,
             self.object,
             "setZeroPowerBehavior",
-            format!("(L{};)V", Direction::JNI_CLASS),
+            format!("(L{};)V", ZeroPowerBehavior::JNI_CLASS),
             [&obj]
         );
     }
@@ -99,8 +99,8 @@ impl DcMotor<'_, '_> {
         let res = call_method!(
             self,
             self.object,
-            "GetZeroPowerBehavior",
-            format!("()L{};", Direction::JNI_CLASS)
+            "getZeroPowerBehavior",
+            format!("()L{};", ZeroPowerBehavior::JNI_CLASS)
         )
         .l()
         .unwrap();
@@ -142,5 +142,30 @@ impl DcMotor<'_, '_> {
         call_method!(self, self.object, "getCurrentPosition", "()I")
             .i()
             .unwrap()
+    }
+
+    /// Sets the behavior of the motor when a power level of zero is applied.
+    pub fn set_mode(&self, dir: RunMode) {
+        let obj = dir.into_jni_object(&self.env);
+        call_method!(
+            self,
+            self.object,
+            "setMode",
+            format!("(L{};)V", RunMode::JNI_CLASS),
+            [&obj]
+        );
+    }
+
+    /// Returns the current behavior of the motor were a power level of zero to be applied.
+    pub fn get_mode(&self) -> RunMode {
+        let res = call_method!(
+            self,
+            self.object,
+            "getMode",
+            format!("()L{};", RunMode::JNI_CLASS)
+        )
+        .l()
+        .unwrap();
+        RunMode::from_jni_object(&self.env, &res)
     }
 }
