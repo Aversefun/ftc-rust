@@ -56,7 +56,8 @@ impl DcMotor<'_, '_> {
             self,
             self.object,
             "getDirection",
-            format!("()L{};", Direction::JNI_CLASS)
+            format!("()L{};", Direction::JNI_CLASS),
+            []
         )
         .l()
         .unwrap();
@@ -77,7 +78,8 @@ impl DcMotor<'_, '_> {
     /// Setting a power level of zero will brake the motor
     #[must_use]
     pub fn get_power(&self) -> f64 {
-        call_method!(self, self.object, "getPower", "()D")
+        call_method!(self, self.object, "getPower", "()D",
+            [])
             .d()
             .unwrap()
     }
@@ -100,7 +102,8 @@ impl DcMotor<'_, '_> {
             self,
             self.object,
             "getZeroPowerBehavior",
-            format!("()L{};", ZeroPowerBehavior::JNI_CLASS)
+            format!("()L{};", ZeroPowerBehavior::JNI_CLASS),
+            []
         )
         .l()
         .unwrap();
@@ -121,7 +124,8 @@ impl DcMotor<'_, '_> {
     /// Returns the current target encoder position for this motor.
     #[must_use]
     pub fn get_target_position(&self) -> i32 {
-        call_method!(self, self.object, "getTargetPosition", "()I")
+        call_method!(self, self.object, "getTargetPosition", "()I",
+            [])
             .i()
             .unwrap()
     }
@@ -129,7 +133,8 @@ impl DcMotor<'_, '_> {
     /// Returns true if the motor is currently advancing or retreating to a target position.
     #[must_use]
     pub fn is_busy(&self) -> bool {
-        call_method!(self, self.object, "isBusy", "()Z")
+        call_method!(self, self.object, "isBusy", "()Z",
+            [])
             .z()
             .unwrap()
     }
@@ -139,7 +144,8 @@ impl DcMotor<'_, '_> {
     /// and thus are not specified here.
     #[must_use]
     pub fn get_current_position(&self) -> i32 {
-        call_method!(self, self.object, "getCurrentPosition", "()I")
+        call_method!(self, self.object, "getCurrentPosition", "()I",
+            [])
             .i()
             .unwrap()
     }
@@ -162,7 +168,8 @@ impl DcMotor<'_, '_> {
             self,
             self.object,
             "getMode",
-            format!("()L{};", RunMode::JNI_CLASS)
+            format!("()L{};", RunMode::JNI_CLASS),
+            []
         )
         .l()
         .unwrap();

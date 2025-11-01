@@ -3,6 +3,12 @@
 /// Call a java method.
 #[macro_export]
 macro_rules! call_method {
+    (vm $vm:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {
+        $vm.attach_current_thread(|env| $crate::call_method!(env env, $obj, $name, $sig, $args))
+    };
+    ($self:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {
+        {let this = $self; $crate::call_method!(vm this.vm, $obj, $name, $sig, $args)}
+    };
     (env $env:expr, $obj:expr, $name:expr, $sig:expr, $args:expr $(,)?) => {{
         $env
             .write()
@@ -16,7 +22,7 @@ macro_rules! call_method {
             .unwrap()
     }};
 
-    (env $env:expr, $obj:expr, $name:expr, $sig:expr $(,)?) => {{
+    (env $env:expr, $obj:expr, $name:expr, $sig:expr, [] $(,)?) => {{
         $env
             .write()
             .unwrap()
@@ -33,7 +39,7 @@ macro_rules! call_method {
 
         $crate::call_method!(env this.env, $obj, $name, $sig, $args)
     }};
-    ($self:expr, $obj:expr, $name:expr, $sig:expr $(,)?) => {{
+    ($self:expr, $obj:expr, $name:expr, $sig:expr, [] $(,)?) => {{
         let this = $self;
 
         $crate::call_method!(env this.env, $obj, $name, $sig)

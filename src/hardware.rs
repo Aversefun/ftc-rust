@@ -110,7 +110,7 @@ macro_rules! enum_variant_into {
                 env: &Rc<RwLock<&mut jni::Env<'local>>>,
                 obj: &JObject<'local>,
             ) -> Self {
-                let res = call_method!(env env, obj, "ordinal", "()I").i().unwrap();
+                let res = call_method!(env env, obj, "ordinal", "()I", []).i().unwrap();
                 let mut items = vec![$(Self:: $variant),*];
                 let full_len = items.len();
                 match res {

@@ -7,7 +7,7 @@ pub use ftc_rust_proc::ftc;
 pub use jni;
 use jni::{
     objects::JObject,
-    strings::JNIString,
+    strings::JNIString, vm::JavaVM,
 };
 
 use crate::hardware::Hardware;
@@ -21,7 +21,7 @@ mod macros;
 #[derive(Debug)]
 pub struct Telemetry<'a, 'local> {
     /// The environment.
-    env: Rc<RwLock<&'a mut jni::Env<'local>>>,
+    vm: JavaVM,
     /// The actual telemetry object. Should be org/firstinspires/ftc/robotcore/external/Telemetry.
     telemetry: JObject<'local>,
 }
@@ -45,7 +45,7 @@ impl Telemetry<'_, '_> {
             .unwrap();
 
         call_method!(
-            self,
+            self.vm,
             self.telemetry,
             "addData",
             "(Ljava/lang/String;Ljava/lang/Object;)V",
@@ -57,28 +57,31 @@ impl Telemetry<'_, '_> {
     /// transmission beforethe transmission interval expires.
     pub fn update(&self) {
         call_method!(
-            self,
+            self.vm,
             self.telemetry,
             "update",
-            "()V"
+            "()V",
+            []
         );
     }
     /// Removes all items from the receiver whose value is not to be retained.
     pub fn clear(&self) {
         call_method!(
-            self,
+            self.vm,
             self.telemetry,
             "clear",
-            "()V"
+            "()V",
+            []
         );
     }
     /// Removes all items, lines, and actions from the receiver
     pub fn clear_all(&self) {
         call_method!(
-            self,
+            self.vm,
             self.telemetry,
             "clearAll",
-            "()V"
+            "()V",
+            []
         );
     }
 }
@@ -87,7 +90,7 @@ impl Telemetry<'_, '_> {
 #[derive(Debug)]
 pub struct FtcContext<'a, 'local> {
     /// The java environment.
-    env: Rc<RwLock<&'a mut jni::Env<'local>>>,
+    vm: JavaVM,
     /// The op mode class.
     this: JObject<'local>,
 }
@@ -96,7 +99,7 @@ impl<'a, 'local> FtcContext<'a, 'local> {
     /// Create a new context.
     pub fn new(env: &'a mut jni::Env<'local>, this: JObject<'local>) -> Self {
         Self {
-            env: Rc::new(RwLock::new(env)),
+            vm: env.get_java_vm(),
             this
         }
     }
@@ -116,7 +119,7 @@ impl<'a, 'local> FtcContext<'a, 'local> {
             .unwrap();
 
         Telemetry {
-            env: self.env.clone(),
+            vm: self.vm.clone(),
             telemetry,
         }
     }
@@ -142,12 +145,12 @@ impl<'a, 'local> FtcContext<'a, 'local> {
     }
     /// Wait for the driver to press play.
     pub fn wait_for_start(&mut self) {
-        call_method!(&self, self.this, "waitForStart", "()V");
+        call_method!(self.vm, self.this, "waitForStart", "()V", []);
     }
     /// Sleeps for the given amount of milliseconds, or until the thread is interrupted (which usually indicates that the
     /// `OpMode` has been stopped).
     pub fn sleep_ms(&mut self, time: i64) {
-        call_method!(&self, self.this, "sleep", "(J)V", [time]);
+        call_method!(self.vm, self.this, "sleep", "(J)V", [time]);
     }
     /// Sleeps for the given number of seconds.
     pub fn sleep_s(&mut self, time: f64) {

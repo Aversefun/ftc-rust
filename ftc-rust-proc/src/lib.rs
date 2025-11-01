@@ -286,7 +286,7 @@ public class {class_name} extends {1} {{
         },
         if disabled { "@Disabled" } else { "" },
         if linear {
-            "public native void runOpMode();".to_string()
+            "@Override\n    public native void runOpMode();".to_string()
         } else {
             todo!("implement iterative op modes")
         }
@@ -315,12 +315,7 @@ public class {class_name} extends {1} {{
                         this,
                     );
 
-                    match std::panic::catch_unwind(|| {let _ = #func_name (&mut ctx);}) {
-                        Ok(_) => {},
-                        Err(_) => {
-                            env.throw(c"rust panic caught").unwrap();
-                        },
-                    };
+                    let _ = #func_name (&mut ctx);
 
                     Ok(())
                 });
