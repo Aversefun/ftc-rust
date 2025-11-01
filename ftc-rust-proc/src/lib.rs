@@ -315,7 +315,12 @@ public class {class_name} extends {1} {{
                         this,
                     );
 
-                    #func_name (&mut ctx);
+                    match std::panic::catch_unwind(|| {let _ = #func_name (&mut ctx);}) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            env.throw(c"rust panic caught").unwrap();
+                        },
+                    };
 
                     Ok(())
                 });
