@@ -11,6 +11,7 @@ ftc-rust-proc = { path = "./ftc-rust-proc", optional = true }
 
 # Last version is from two years ago, last commit is from a month ago
 jni = { git = "https://github.com/jni-rs/jni-rs" }
+paste = "1.0.15"
 
 [features]
 default = ["proc-macro"]

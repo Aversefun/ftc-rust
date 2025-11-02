@@ -36,6 +36,7 @@ version = "11.0.0"
 dependencies = [
  "ftc-rust-proc",
  "jni",
+ "paste",
 ]
 
 [[package]]

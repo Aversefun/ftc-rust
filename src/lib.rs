@@ -24,26 +24,30 @@ pub struct Telemetry {
 }
 
 impl Telemetry {
-    /// Adds an item to the end if the telemetry being built for driver station display. The caption and value are shown
-    /// on the driver station separated by the caption value separator. The item is removed if clear or `clear_all` is
-    /// called.
+    /// Adds an item to the end if the telemetry being built for driver station display. The caption
+    /// and value are shown on the driver station separated by the caption value separator. The
+    /// item is removed if clear or `clear_all` is called.
     pub fn add_data(&self, caption: impl Display, value: impl Display) {
-        self.vm.attach_current_thread(|env| {
-            let caption = new_string!(env env, caption.to_string()).unwrap();
-            let value = new_string!(env env, value.to_string()).unwrap();
-            call_method!(
-                env env,
-                self.telemetry,
-                "addData",
-                "(Ljava/lang/String;Ljava/lang/Object;)V",
-                [&caption, &value]
-            ).unwrap();
-            jni::errors::Result::Ok(()) // cannot return a reference
-        }).unwrap();
+        self.vm
+            .attach_current_thread(|env| {
+                let caption = new_string!(env env, caption.to_string()).unwrap();
+                let value = new_string!(env env, value.to_string()).unwrap();
+                call_method!(
+                    env env,
+                    self.telemetry,
+                    "addData",
+                    "(Ljava/lang/String;Ljava/lang/Object;)V",
+                    [&caption, &value]
+                )
+                .unwrap();
+                jni::errors::Result::Ok(()) // cannot return a reference
+            })
+            .unwrap();
     }
-    /// Sends the receiver Telemetry to the driver station if more than the transmission interval has elapsed since the last
-    /// transmission, or schedules the transmissionof the receiver should no subsequent Telemetry state be scheduled for
-    /// transmission beforethe transmission interval expires.
+    /// Sends the receiver Telemetry to the driver station if more than the transmission interval
+    /// has elapsed since the last transmission, or schedules the transmissionof the receiver
+    /// should no subsequent Telemetry state be scheduled for transmission beforethe
+    /// transmission interval expires.
     pub fn update(&self) {
         call_method!(
             void self,
@@ -144,8 +148,8 @@ impl<'a, 'local> FtcContext {
     pub fn wait_for_start(&mut self) {
         call_method!(void self, self.this, "waitForStart", "()V", []);
     }
-    /// Sleeps for the given amount of milliseconds, or until the thread is interrupted (which usually indicates that the
-    /// `OpMode` has been stopped).
+    /// Sleeps for the given amount of milliseconds, or until the thread is interrupted (which
+    /// usually indicates that the `OpMode` has been stopped).
     pub fn sleep_ms(&mut self, time: i64) {
         call_method!(void self, self.this, "sleep", "(J)V", [time]);
     }
