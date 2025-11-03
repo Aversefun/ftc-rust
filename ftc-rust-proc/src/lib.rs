@@ -316,7 +316,7 @@ public class {class_name} extends {1} {{
                         this,
                     );
 
-                    let cmd: T = #func_name (&ctx).into();
+                    let cmd: T = #func_name (&ctx);
 
                     cmd.schedule();
 
