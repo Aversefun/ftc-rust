@@ -100,7 +100,8 @@ impl Parse for FtcArg {
                 _ => {
                     return Err(Error::new(
                         name_ident.span(),
-                        "ident should be one of linear, iterative, teleop, auto, disabled, name, or group",
+                        "ident should be one of linear, iterative, teleop, auto, disabled, name, \
+                         or group",
                     ));
                 }
             })
