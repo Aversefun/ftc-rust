@@ -1,4 +1,5 @@
 //! Hardware-related code.
+#![allow(clippy::needless_pass_by_value)]
 
 use std::fmt::{Debug, Display};
 
@@ -27,6 +28,7 @@ pub trait Device {
 /// A wrapper for accessing hardware-related methods.
 #[derive(Debug)]
 #[doc(alias = "HardwareMap")]
+#[must_use]
 pub struct Hardware {
     /// The environment.
     pub(crate) vm: JavaVM,
@@ -62,6 +64,27 @@ impl Hardware {
             .unwrap();
 
         T::from_java(self.vm.clone(), object)
+    }
+}
+
+impl Iterator for Hardware {
+    type Item = HardwareDevice;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.vm
+            .attach_current_thread(|env| {
+                call_method!(
+                    env env,
+                    self.hardware_map,
+                    "next",
+                    format!("()L{};", HardwareDevice::JNI_CLASS),
+                    []
+                )
+                .map(|v| HardwareDevice {
+                    vm: self.vm.clone(),
+                    hardware_device: new_global!(env, v.l().unwrap()).unwrap(),
+                })
+            })
+            .ok()
     }
 }
 
@@ -105,7 +128,7 @@ macro_rules! enum_variant_into {
             /// conversion
             $vis fn [<from_jni_object $($suffix)?>](
                 vm: &JavaVM,
-                obj: &JObject,
+                obj: Global<JObject<'static>>,
             ) -> Self {
                 let res = vm.attach_current_thread(|env| call_method!(env env, obj, "ordinal", "()I", []).unwrap().i()).unwrap();
                 let mut items = vec![$(Self:: $variant),*];
@@ -140,7 +163,7 @@ pub trait IntoJniObject {
     /// Convert this type into a `JObject`.
     fn into_jni_object<'local>(self, env: &mut Env<'local>) -> JObject<'local>;
     /// Convert a `JObject` into this type.
-    fn from_jni_object(vm: &JavaVM, obj: &JObject) -> Self;
+    fn from_jni_object(vm: &JavaVM, obj: Global<JObject<'static>>) -> Self;
 }
 
 /// `DcMotor`s can be configured to internally reverse the values to which, e.g., their motor power
@@ -188,7 +211,7 @@ impl Direction {
         .unwrap()
     }
     /// Convert this from a JNI object for a `Servo` as it for some reason uses a different type.
-    pub fn from_jni_object_servo(vm: &JavaVM, obj: &JObject) -> Self {
+    pub fn from_jni_object_servo(vm: &JavaVM, obj: Global<JObject<'static>>) -> Self {
         let res = vm
             .attach_current_thread(|env| {
                 {
@@ -400,33 +423,33 @@ impl IntoJniObject for AngularVelocity {
         )
         .unwrap()
     }
-    fn from_jni_object(vm: &JavaVM, obj: &JObject) -> Self {
+    fn from_jni_object(vm: &JavaVM, obj: Global<JObject<'static>>) -> Self {
         vm.attach_current_thread(|env| {
             let x_speed = env
-                .get_field(obj, JNIString::new("xRotationRate"), JNIString::new("F"))
+                .get_field(&obj, JNIString::new("xRotationRate"), JNIString::new("F"))
                 .unwrap()
                 .f()
                 .unwrap();
             let y_speed = env
-                .get_field(obj, JNIString::new("yRotationRate"), JNIString::new("F"))
+                .get_field(&obj, JNIString::new("yRotationRate"), JNIString::new("F"))
                 .unwrap()
                 .f()
                 .unwrap();
             let z_speed = env
-                .get_field(obj, JNIString::new("zRotationRate"), JNIString::new("F"))
+                .get_field(&obj, JNIString::new("zRotationRate"), JNIString::new("F"))
                 .unwrap()
                 .f()
                 .unwrap();
 
             let acquisition_time = env
-                .get_field(obj, JNIString::new("acquisitionTime"), JNIString::new("J"))
+                .get_field(&obj, JNIString::new("acquisitionTime"), JNIString::new("J"))
                 .unwrap()
                 .j()
                 .unwrap();
 
             let unit = env
                 .get_field(
-                    obj,
+                    &obj,
                     JNIString::new("angleUnit"),
                     JNIString::new(format!("L{};", AngleUnit::UNNORMALIZED_JNI_CLASS)),
                 )
@@ -434,7 +457,7 @@ impl IntoJniObject for AngularVelocity {
                 .l()
                 .unwrap();
 
-            let unit = AngleUnit::from_jni_object_unnormalized(vm, &unit);
+            let unit = AngleUnit::from_jni_object_unnormalized(vm, new_global!(env, unit).unwrap());
 
             jni::errors::Result::Ok(AngularVelocity {
                 x_speed,
@@ -581,7 +604,7 @@ impl IntoJniObject for YawPitchRollAngles {
         )
         .unwrap()
     }
-    fn from_jni_object(vm: &JavaVM, obj: &JObject) -> Self {
+    fn from_jni_object(vm: &JavaVM, obj: Global<JObject<'static>>) -> Self {
         vm.attach_current_thread(|env| {
             let unit = AngleUnit::Degree.into_jni_object(env);
 
@@ -730,7 +753,7 @@ impl IntoJniObject for Rev9AxisImuOrientationOnRobot {
         )
         .unwrap()
     }
-    fn from_jni_object(_: &JavaVM, _: &JObject) -> Self {
+    fn from_jni_object(_: &JavaVM, _: Global<JObject<'static>>) -> Self {
         unimplemented!(
             "I'm honestly not sure if it's possible to convert a `Rev9AxisImuOrientationOnRobot` \
              from Java. If you know either way, make a PR to {}:{}!",
@@ -798,6 +821,11 @@ pub struct HardwareDevice {
 }
 
 impl HardwareDevice {
+    /// The class in java of this type.
+    pub const JAVA_CLASS: &'static str = "com.qualcomm.robotcore.hardware.HardwareDevice";
+    /// The class in the JNI of this type.
+    pub const JNI_CLASS: &'static str = "com/qualcomm/robotcore/hardware/HardwareDevice";
+
     /// Returns an indication of the manufacturer of this device.
     #[doc(alias = "getManufacturer")]
     pub fn get_manufacturer(&self) -> Manufacturer {
@@ -813,7 +841,10 @@ impl HardwareDevice {
                 .unwrap()
                 .l()
                 .unwrap();
-                jni::errors::Result::Ok(Manufacturer::from_jni_object(&self.vm, &res))
+                jni::errors::Result::Ok(Manufacturer::from_jni_object(
+                    &self.vm,
+                    new_global!(env, res).unwrap(),
+                ))
             })
             .unwrap()
     }
@@ -878,5 +909,10 @@ impl HardwareDevice {
     #[doc(alias = "resetDeviceConfigurationForOpMode")]
     pub fn reset_device_config(&self) {
         call_method!(void self, self.hardware_device, "resetDeviceConfigurationForOpMode", "()V", []);
+    }
+    /// Disables this device.
+    #[doc(alias = "close")]
+    pub fn disable(&self) {
+        call_method!(void self, self.hardware_device, "close", "()V", []);
     }
 }

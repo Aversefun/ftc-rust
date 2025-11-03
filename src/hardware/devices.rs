@@ -73,7 +73,7 @@ impl DcMotor {
             format!("()L{};", Direction::JNI_CLASS),
             []
         );
-        Direction::from_jni_object(&self.vm, &res)
+        Direction::from_jni_object(&self.vm, res)
     }
 
     /// Sets the power level of the motor, expressed as a fraction of the maximum possible power /
@@ -126,7 +126,7 @@ impl DcMotor {
             format!("()L{};", ZeroPowerBehavior::JNI_CLASS),
             []
         );
-        ZeroPowerBehavior::from_jni_object(&self.vm, &res)
+        ZeroPowerBehavior::from_jni_object(&self.vm, res)
     }
 
     /// Sets the desired encoder target position to which the motor should advance or retreat and
@@ -198,7 +198,7 @@ impl DcMotor {
             format!("()L{};", RunMode::JNI_CLASS),
             []
         );
-        RunMode::from_jni_object(&self.vm, &res)
+        RunMode::from_jni_object(&self.vm, res)
     }
 }
 
@@ -239,7 +239,7 @@ impl Servo {
             format!("()L{};", Direction::SERVO_JNI_CLASS),
             []
         );
-        Direction::from_jni_object_servo(&self.vm, &res)
+        Direction::from_jni_object_servo(&self.vm, res)
     }
 
     /// Sets the current position of the servo, expressed as a fraction of its available range. If
@@ -325,7 +325,7 @@ impl CRServo {
             format!("()L{};", Direction::JNI_CLASS),
             []
         );
-        Direction::from_jni_object(&self.vm, &res)
+        Direction::from_jni_object(&self.vm, res)
     }
 
     /// Sets the power level of the motor, expressed as a fraction of the maximum possible power /
@@ -420,7 +420,7 @@ impl IMU {
             format!("()L{};", YawPitchRollAngles::JNI_CLASS),
             []
         );
-        YawPitchRollAngles::from_jni_object(&self.vm, &res)
+        YawPitchRollAngles::from_jni_object(&self.vm, res)
     }
     /// Initializes the IMU with non-default settings.
     #[doc(alias = "initialize")]
@@ -464,6 +464,6 @@ impl IMU {
             format!("()L{};", AngularVelocity::JNI_CLASS),
             []
         );
-        AngularVelocity::from_jni_object(&self.vm, &res)
+        AngularVelocity::from_jni_object(&self.vm, res)
     }
 }

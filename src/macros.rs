@@ -78,7 +78,7 @@ macro_rules! new_global {
         }
     };
     (vm $vm:expr, $obj:expr) => {
-        $vm.attach_current_thread(|env| $crate::new_global!(env env, $obj)).unwrap()
+        $vm.attach_current_thread(|env| $crate::new_global!(env, $obj)).unwrap()
     };
     (obj $self:expr, $obj:expr) => {
         {
