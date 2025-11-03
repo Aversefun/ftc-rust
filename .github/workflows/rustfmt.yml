@@ -2,7 +2,9 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: write
+  
 jobs:
   fmt:
     name: format
