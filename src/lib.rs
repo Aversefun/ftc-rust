@@ -31,7 +31,7 @@ pub struct Telemetry {
 impl Telemetry {
     /// Adds an item to the end if the telemetry being built for driver station display. The caption
     /// and value are shown on the driver station separated by the caption value separator. The
-    /// item is removed if clear or `clear_all` is called.
+    /// item is removed if `clear` or `clear_all` is called.
     pub fn add_data(&self, caption: impl Display, value: impl Display) {
         self.vm
             .attach_current_thread(|env| {
@@ -49,9 +49,9 @@ impl Telemetry {
             })
             .unwrap();
     }
-    /// Sends the receiver Telemetry to the driver station if more than the transmission interval
-    /// has elapsed since the last transmission, or schedules the transmissionof the receiver
-    /// should no subsequent Telemetry state be scheduled for transmission beforethe
+    /// Sends the receiver `Telemetry` to the driver station if more than the transmission interval
+    /// has elapsed since the last transmission, or schedules the transmission of the receiver
+    /// should no subsequent `Telemetry` state be scheduled for transmission before the
     /// transmission interval expires.
     pub fn update(&self) {
         call_method!(
@@ -72,7 +72,7 @@ impl Telemetry {
             []
         );
     }
-    /// Removes all items, lines, and actions from the receiver
+    /// Removes all items, lines, and actions from the receiver.
     pub fn clear_all(&self) {
         call_method!(
             void self,
@@ -97,6 +97,7 @@ pub struct Gamepad {
     which: WhichGamepad,
 }
 
+/// `snake_case` to `CamelCase`
 fn snake_to_camel(s: &str) -> String {
     let mut first_done = false;
     s.split('_')
