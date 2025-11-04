@@ -3,7 +3,8 @@
 use std::{
     collections::VecDeque,
     convert::Infallible,
-    sync::{Arc, LazyLock, RwLock},
+    fmt::Debug,
+    sync::{Arc, LazyLock, RwLock, RwLockReadGuard},
 };
 
 use crate::FtcContext;
@@ -15,6 +16,12 @@ pub(crate) static SCHEDULER: LazyLock<RwLock<CommandScheduler>> = LazyLock::new(
         states: RwLock::new(Vec::with_capacity(16)),
     })
 });
+
+/// Get the scheduler. Should generally not be used as most methods are otherwise available on other
+/// types.
+pub fn get_scheduler<'a>() -> RwLockReadGuard<'a, CommandScheduler> {
+    SCHEDULER.read().unwrap()
+}
 
 /// The current state of a command.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -36,7 +43,24 @@ pub struct CommandScheduler {
     states: RwLock<Vec<Arc<RwLock<CommandState>>>>,
 }
 
+impl Debug for CommandScheduler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CommandScheduler")
+            .field("queue_len", &self.queue_len())
+            .finish()
+    }
+}
+
 impl CommandScheduler {
+    /// Return the length of the command queue.
+    pub fn queue_len(&self) -> usize {
+        debug_assert!(
+            self.commands.read().unwrap().len() == self.states.read().unwrap().len(),
+            "the length of commands and states are out of sync!"
+        );
+
+        self.commands.read().unwrap().len()
+    }
     /// Execute this command.
     pub fn execute(&mut self, command: impl Command) {
         self.commands

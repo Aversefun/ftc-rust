@@ -2,6 +2,11 @@
 name = "ftc"
 version = "11.0.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Library for running Rust code on FTC robots."
+repository = "https://github.com/Aversefun/ftc-rust"
+keywords = ["robot", "robotics", "first-robotics"]
+categories = ["science::robotics"]
 
 [package.metadata.ftc]
 controller_version = "11.0"
@@ -19,11 +24,13 @@ proc-macro = ["dep:ftc-rust-proc"]
 
 [lints.rust]
 missing_docs = "deny"
+missing_debug_implementations = "warn"
 
 [lints.clippy]
 missing_docs_in_private_items = "warn"
 pedantic = { level = "warn", priority = -1 }
 all = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
 ignore_without_reason = "warn"
 alloc_instead_of_core = "warn"
 as_underscore = "warn"

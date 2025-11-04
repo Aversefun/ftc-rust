@@ -27,6 +27,12 @@ pub struct Telemetry {
     telemetry: Global<JObject<'static>>,
 }
 
+impl Debug for Telemetry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(opaque Telemetry object)")
+    }
+}
+
 impl Telemetry {
     /// Adds an item to the end if the telemetry being built for driver station display. The caption
     /// and value are shown on the driver station separated by the caption value separator. The
@@ -80,12 +86,6 @@ impl Telemetry {
             "()V",
             []
         );
-    }
-}
-
-impl Debug for Telemetry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("(opaque Telemetry object)")
     }
 }
 
@@ -200,6 +200,7 @@ pub enum PressEdge {
 
 /// The command used for button presses. Registered by the `Gamepad::on_*` and `Gamepad::while_`
 /// functions.
+#[derive(Debug)]
 pub struct ButtonCommand<F: FnMut(PressEdge) + 'static + Send + Sync> {
     /// The gamepad to check.
     pub gamepad: WhichGamepad,
@@ -232,6 +233,7 @@ impl<F: FnMut(PressEdge) + 'static + Send + Sync> Command for ButtonCommand<F> {
 }
 
 /// The command used for stick thresholds.
+#[derive(Debug)]
 pub struct StickCommand<F: FnMut(f32) + 'static + Send + Sync> {
     /// The gamepad to check.
     pub gamepad: WhichGamepad,
