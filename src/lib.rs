@@ -203,21 +203,20 @@ pub struct ButtonCommand<F: FnMut(PressEdge) + 'static + Send + Sync> {
 }
 
 impl<F: FnMut(PressEdge) + 'static + Send + Sync> Command for ButtonCommand<F> {
-    fn execute(&mut self, ctx: &FtcContext) {
+    fn execute(&mut self, _: &FtcContext) {
+        (self.f)(self.edge);
+    }
+    fn try_run(&mut self, ctx: &FtcContext) -> bool {
         let gamepad = match self.gamepad {
             WhichGamepad::Gamepad1 => ctx.gamepad1(),
             WhichGamepad::Gamepad2 => ctx.gamepad2(),
         };
 
-        let run = match self.edge {
+        match self.edge {
             PressEdge::WhilePressed => gamepad.is_pressed(self.button),
             PressEdge::WhileReleased => gamepad.is_released(self.button),
             PressEdge::Press => gamepad.was_pressed(self.button),
             PressEdge::Release => gamepad.was_released(self.button),
-        };
-
-        if run {
-            (self.f)(self.edge);
         }
     }
 }
@@ -244,6 +243,15 @@ impl<F: FnMut(f32) + 'static + Send + Sync> Command for StickCommand<F> {
         };
 
         let value = gamepad.get_stick(self.stick);
+
+        (self.f)(value);
+    }
+    fn try_run(&mut self, ctx: &FtcContext) -> bool {
+        let gamepad = match self.gamepad {
+            WhichGamepad::Gamepad1 => ctx.gamepad1(),
+            WhichGamepad::Gamepad2 => ctx.gamepad2(),
+        };
+        let value = gamepad.get_stick(self.stick);
         let value = if self.dir { value } else { value.abs() };
         let threshold = if self.dir {
             self.threshold
@@ -251,14 +259,10 @@ impl<F: FnMut(f32) + 'static + Send + Sync> Command for StickCommand<F> {
             self.threshold.abs()
         };
 
-        let matches = if threshold < 0.0 {
+        if threshold < 0.0 {
             value < threshold
         } else {
             value > threshold
-        };
-
-        if matches {
-            (self.f)(value);
         }
     }
 }

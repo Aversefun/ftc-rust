@@ -76,7 +76,9 @@ impl CommandScheduler {
                                 *state.write().unwrap() = CommandState::Executing;
                             }
                             CommandState::Executing => {
-                                cmd.write().unwrap().execute(&ctx);
+                                if cmd.write().unwrap().try_run(&ctx) {
+                                    cmd.write().unwrap().execute(&ctx);
+                                }
                             }
                         }
                         if *state.read().unwrap() != CommandState::Finished
@@ -98,6 +100,13 @@ pub trait Command: Send + Sync + 'static {
     fn init(&mut self, ctx: &FtcContext) {}
     /// Execute this command.
     fn execute(&mut self, ctx: &FtcContext);
+    /// Whether to attempt to run this command. If not overridden, always returns true.
+    ///
+    /// Only called during the execute phase.
+    #[allow(unused_variables)]
+    fn try_run(&mut self, ctx: &FtcContext) -> bool {
+        true
+    }
     /// Return whether this command has finished or not. If not overridden, always returns false.
     #[allow(unused_variables)]
     fn is_finished(&mut self, ctx: &FtcContext) -> bool {
@@ -120,6 +129,9 @@ impl Command for () {
     fn is_finished(&mut self, _: &FtcContext) -> bool {
         true
     }
+    fn try_run(&mut self, _: &FtcContext) -> bool {
+        false
+    }
     fn schedule(self)
     where
         Self: Sized,
@@ -134,6 +146,9 @@ impl Command for Infallible {
     }
     fn is_finished(&mut self, _: &FtcContext) -> bool {
         match *self {}
+    }
+    fn try_run(&mut self, _: &FtcContext) -> bool {
+        false
     }
     fn schedule(self)
     where
@@ -161,6 +176,13 @@ impl<T: Command> Command for VecDeque<T> {
             }
         }
     }
+    fn try_run(&mut self, ctx: &FtcContext) -> bool {
+        if let Some(cmd) = self.front_mut() {
+            cmd.try_run(ctx)
+        } else {
+            false
+        }
+    }
     fn is_finished(&mut self, _: &FtcContext) -> bool {
         self.is_empty()
     }
@@ -183,6 +205,13 @@ impl<T: Command> Command for Vec<T> {
                     cmd.init(ctx);
                 }
             }
+        }
+    }
+    fn try_run(&mut self, ctx: &FtcContext) -> bool {
+        if let Some(cmd) = self.last_mut() {
+            cmd.try_run(ctx)
+        } else {
+            false
         }
     }
     fn is_finished(&mut self, _: &FtcContext) -> bool {
