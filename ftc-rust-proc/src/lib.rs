@@ -124,7 +124,9 @@ fn snake_to_camel(s: &str) -> String {
         .collect()
 }
 
-/// The primary attribute used in Rust FTC programming. Examples:
+/// The primary attribute used in Rust FTC programming.
+/// 
+/// Examples:
 ///
 /// ```ignore
 /// #[ftc(name = "Example: My Linear Op Mode", linear, teleop, group = "Example", disabled)]

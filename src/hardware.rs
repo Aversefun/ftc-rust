@@ -26,7 +26,6 @@ pub trait Device {
 }
 
 /// A wrapper for accessing hardware-related methods.
-#[derive(Debug)]
 #[doc(alias = "HardwareMap")]
 #[must_use]
 pub struct Hardware {
@@ -34,6 +33,12 @@ pub struct Hardware {
     pub(crate) vm: JavaVM,
     /// The actual hardwareMap object. Should be com/qualcomm/robotcore/hardware/HardwareMap.
     pub(crate) hardware_map: Global<JObject<'static>>,
+}
+
+impl Debug for Hardware {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(opaque Hardware object)")
+    }
 }
 
 impl Hardware {
@@ -812,12 +817,21 @@ enum_variant_into! {
 }
 
 /// A hardware device.
-#[derive(Debug)]
 pub struct HardwareDevice {
     /// The environment.
     vm: JavaVM,
     /// The actual device object. Should be com/qualcomm/robotcore/hardware/HardwareDevice.
     hardware_device: Global<JObject<'static>>,
+}
+
+impl Debug for HardwareDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HardwareDevice")
+            .field("manufacturer", &self.get_manufacturer())
+            .field("device_name", &self.get_device_name())
+            .field("connection_info", &self.get_connection_info())
+            .finish()
+    }
 }
 
 impl HardwareDevice {

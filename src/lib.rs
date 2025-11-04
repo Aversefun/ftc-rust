@@ -1,6 +1,6 @@
 //! Code for using Rust in FTC robot code.
 
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 #[cfg(feature = "proc-macro")]
 pub use ftc_rust_proc::ftc;
@@ -19,7 +19,6 @@ pub mod hardware;
 mod macros;
 
 /// A wrapper for accessing telemetry-related methods.
-#[derive(Debug)]
 #[must_use]
 pub struct Telemetry {
     /// The environment.
@@ -84,8 +83,13 @@ impl Telemetry {
     }
 }
 
+impl Debug for Telemetry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(opaque Telemetry object)")
+    }
+}
+
 /// A gamepad.
-#[derive(Debug)]
 #[must_use]
 pub struct Gamepad {
     /// The java environment.
@@ -95,6 +99,12 @@ pub struct Gamepad {
     gamepad: Global<JObject<'static>>,
     /// The gamepad being used.
     which: WhichGamepad,
+}
+
+impl Debug for Gamepad {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(opaque Gamepad object)")
+    }
 }
 
 /// `snake_case` to `CamelCase`
@@ -517,12 +527,17 @@ impl Gamepad {
 }
 
 /// A context used for accessing the Java runtime.
-#[derive(Debug)]
 pub struct FtcContext {
     /// The java environment.
     vm: JavaVM,
     /// The op mode class.
     this: Global<JObject<'static>>,
+}
+
+impl Debug for FtcContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(opaque FtcContext object)")
+    }
 }
 
 impl Clone for FtcContext {
@@ -663,7 +678,8 @@ impl<'a, 'local> FtcContext {
     pub fn run_scheduler(&self) {
         SCHEDULER.write().unwrap().run(self);
     }
-    /// Returns whether the `OpMode` is still running.
+    /// Returns whether the `OpMode` is still running. If not, the op mode should exit as fast as
+    /// possible.
     #[doc(alias = "opModeIsActive")]
     #[must_use]
     pub fn running(&self) -> bool {
