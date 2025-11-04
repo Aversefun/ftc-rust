@@ -23,6 +23,12 @@ macro_rules! device {
             object: Global<JObject<'static>>,
         }
 
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(concat!("(opaque ", stringify!($name), " object, wraps ", $java_class, ")"))
+            }
+        }
+
         impl $crate::hardware::Device for $name {
             const JAVA_CLASS: &'static str = $java_class;
             const JNI_CLASS: &'static str = $jni_class;
