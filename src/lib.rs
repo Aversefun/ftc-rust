@@ -526,7 +526,9 @@ impl Gamepad {
     );
 }
 
-/// A context used for accessing the Java runtime.
+/// A context used for accessing the Java runtime. Note that cloning is somewhat costly from
+/// creating a new JNI global reference to the `this` object, so prefer passing around references
+/// rather than owned contexts.
 pub struct FtcContext {
     /// The java environment.
     vm: JavaVM,
@@ -555,9 +557,9 @@ impl Clone for FtcContext {
     }
 }
 
-impl<'a, 'local> FtcContext {
+impl FtcContext {
     /// Create a new context.
-    pub fn new(env: &'a mut jni::Env<'local>, this: JObject<'local>) -> Self {
+    pub fn new<'local>(env: &mut jni::Env<'local>, this: JObject<'local>) -> Self {
         Self {
             this: env.new_global_ref(this).unwrap(),
             vm: env.get_java_vm(),

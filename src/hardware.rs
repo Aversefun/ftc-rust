@@ -323,11 +323,26 @@ enum_variant_into! {
 
 /// Angle units.
 #[allow(missing_docs, reason = "angle units don't need to be explained")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum AngleUnit {
     Degree,
     Radian,
+}
+
+impl Debug for AngleUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self, f)
+    }
+}
+
+impl Display for AngleUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Degree => "°",
+            Self::Radian => "rad",
+        })
+    }
 }
 
 enum_variant_into! {
@@ -342,6 +357,17 @@ impl AngleUnit {
     /// Convert a value from this unit to another.
     #[must_use]
     pub fn to_unit(self, to: Self, value: f64) -> f64 {
+        match (self, to) {
+            (AngleUnit::Degree, AngleUnit::Degree) | (AngleUnit::Radian, AngleUnit::Radian) => {
+                value
+            }
+            (AngleUnit::Degree, AngleUnit::Radian) => value.to_radians(),
+            (AngleUnit::Radian, AngleUnit::Degree) => value.to_degrees(),
+        }
+    }
+    /// Convert a value from this unit to another.
+    #[must_use]
+    pub fn to_unit_f32(self, to: Self, value: f32) -> f32 {
         match (self, to) {
             (AngleUnit::Degree, AngleUnit::Degree) | (AngleUnit::Radian, AngleUnit::Radian) => {
                 value
@@ -391,9 +417,9 @@ impl AngularVelocity {
     /// Convert this angular velocity to another unit.
     pub fn to_unit(self, unit: AngleUnit) -> Self {
         Self {
-            x_speed: self.unit.to_unit(unit, f64::from(self.x_speed)) as f32,
-            y_speed: self.unit.to_unit(unit, f64::from(self.y_speed)) as f32,
-            z_speed: self.unit.to_unit(unit, f64::from(self.z_speed)) as f32,
+            x_speed: self.unit.to_unit_f32(unit, self.x_speed),
+            y_speed: self.unit.to_unit_f32(unit, self.y_speed),
+            z_speed: self.unit.to_unit_f32(unit, self.z_speed),
             acquisition_time: self.acquisition_time,
             unit,
         }
@@ -485,7 +511,7 @@ impl Debug for AngularVelocity {
 impl Display for AngularVelocity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{{x={:.3}, y={:.3}, z={:.3} ({:?})}}",
+            "{{x={:.3}{3}, y={:.3}{3}, z={:.3}{3}}}",
             self.x_speed, self.y_speed, self.z_speed, self.unit
         ))
     }
@@ -644,7 +670,7 @@ impl Debug for YawPitchRollAngles {
 impl Display for YawPitchRollAngles {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{{yaw={:.3}, pitch={:.3}, roll={:.3}}}",
+            "{{yaw={:.3}°, pitch={:.3}°, roll={:.3}°}}",
             self.yaw(AngleUnit::Degree),
             self.pitch(AngleUnit::Degree),
             self.roll(AngleUnit::Degree)
@@ -695,6 +721,8 @@ impl Orientation {
 }
 
 /// The orientation at which a given REV External IMU is mounted to a robot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[must_use]
 pub struct Rev9AxisImuOrientationOnRobot {
     /// The direction of the logo on the robot.
     pub logo_dir: Orientation,
