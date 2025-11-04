@@ -14,7 +14,7 @@ use crate::{
 
 /// Easily define a basic device.
 macro_rules! device {
-    ($(#[$attr:meta])* $name:ident, JAVA_CLASS = $java_class:literal ; JNI_CLASS = $jni_class:literal $(;)?) => {
+    ($(#[$attr:meta])* $name:ident, JAVA_CLASS = $java_class:literal $(;)? $(,)? JNI_CLASS = $jni_class:literal $(;)? $(,)?) => {
         $(#[$attr])*
         pub struct $name {
             /// The environment.
