@@ -125,7 +125,7 @@ fn snake_to_camel(s: &str) -> String {
 }
 
 /// The primary attribute used in Rust FTC programming.
-/// 
+///
 /// Examples:
 ///
 /// ```ignore
